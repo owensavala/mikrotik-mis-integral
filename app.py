@@ -81,6 +81,7 @@ def format_bps(bps):
 
 
 @app.route('/')
+@app.route('/api/index')
 def index():
   cfg = load_config()
   safe_cfg = {
