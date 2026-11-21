@@ -1,5 +1,6 @@
 import json
 import os
+import urllib.parse
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import routeros_api
 
@@ -10,6 +11,48 @@ app = Flask(
     template_folder=os.path.join(base_dir, 'templates'),
     static_folder=os.path.join(base_dir, 'static'),
 )
+
+# Vercel Serverless WSGI Path Middleware
+class VercelPathFixMiddleware:
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        qs = environ.get('QUERY_STRING', '')
+        if '__vercel_path=' in qs:
+            parsed = urllib.parse.parse_qs(qs)
+            if '__vercel_path' in parsed:
+                real_path = parsed['__vercel_path'][0]
+                if not real_path.startswith('/'):
+                    real_path = '/' + real_path
+                while '//' in real_path:
+                    real_path = real_path.replace('//', '/')
+                environ['PATH_INFO'] = real_path
+                
+                cleaned = {k: v for k, v in parsed.items() if k != '__vercel_path'}
+                environ['QUERY_STRING'] = urllib.parse.urlencode(cleaned, doseq=True)
+                return self.wsgi_app(environ, start_response)
+
+        forwarded = (
+            environ.get('HTTP_X_FORWARDED_PATH') or
+            environ.get('HTTP_X_MATCHED_PATH') or
+            environ.get('HTTP_X_ORIGINAL_URL') or
+            environ.get('RAW_URI') or
+            environ.get('REQUEST_URI')
+        )
+        if forwarded:
+            path = forwarded.split('?')[0]
+            if path in ['/api/index', '/api']:
+                path = '/'
+            environ['PATH_INFO'] = path
+        else:
+            path = environ.get('PATH_INFO', '')
+            if path in ['/api/index', '/api']:
+                environ['PATH_INFO'] = '/'
+                
+        return self.wsgi_app(environ, start_response)
+
+app.wsgi_app = VercelPathFixMiddleware(app.wsgi_app)
 
 # On Vercel, the root filesystem is read-only. We use /tmp for runtime configs.
 if os.environ.get('VERCEL'):
@@ -93,18 +136,6 @@ def index():
       'has_password': bool(cfg.get('password')),
   }
   return render_template('index.html', config=safe_cfg)
-
-
-@app.route('/api/index')
-def api_index_debug():
-  return jsonify({
-      'path': request.path,
-      'full_path': request.full_path,
-      'url': request.url,
-      'args': dict(request.args),
-      'environ': {k: str(v) for k, v in request.environ.items() if not k.startswith('wsgi.') and 'KEY' not in k and 'SECRET' not in k}
-  })
-
 
 
 @app.route('/static/<path:filename>')
