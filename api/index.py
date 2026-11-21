@@ -9,17 +9,30 @@ if parent_dir not in sys.path:
 from app import app
 
 # Vercel Serverless WSGI Path Middleware
-# Vercel rewrites incoming requests to /api/index, causing Flask to receive /api/index instead of /
+# Vercel rewrites incoming requests to /api/index, but stores the real path in HTTP_X_FORWARDED_PATH or HTTP_X_MATCHED_PATH
 class VercelPathFixMiddleware:
     def __init__(self, wsgi_app):
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
-        path = environ.get('PATH_INFO', '')
-        # Strip /api/index prefix if injected by Vercel rewrite
-        if path.startswith('/api/index'):
-            path = path[len('/api/index'):]
-            environ['PATH_INFO'] = path if path else '/'
+        forwarded = (
+            environ.get('HTTP_X_FORWARDED_PATH') or
+            environ.get('HTTP_X_MATCHED_PATH') or
+            environ.get('HTTP_X_ORIGINAL_URL') or
+            environ.get('RAW_URI') or
+            environ.get('REQUEST_URI')
+        )
+        if forwarded:
+            path = forwarded.split('?')[0]
+            if path == '/api/index':
+                path = '/'
+            environ['PATH_INFO'] = path
+        else:
+            path = environ.get('PATH_INFO', '')
+            if path.startswith('/api/index'):
+                path = path[len('/api/index'):]
+                environ['PATH_INFO'] = path if path else '/'
+                
         return self.wsgi_app(environ, start_response)
 
 app.wsgi_app = VercelPathFixMiddleware(app.wsgi_app)

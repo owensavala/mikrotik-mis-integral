@@ -18,41 +18,44 @@ else:
   CONFIG_PATH = os.path.join(base_dir, 'config.json')
 
 
+_in_memory_config = {
+    "host": os.environ.get("MIKROTIK_HOST", "idn32.tunnel.id"),
+    "port": int(os.environ.get("MIKROTIK_PORT", 3017)),
+    "user": os.environ.get("MIKROTIK_USER", "admin"),
+    "password": os.environ.get("MIKROTIK_PASSWORD", "0020913463")
+}
+
 def load_config():
-  default = {
-      'host': os.environ.get('MIKROTIK_HOST', 'idn32.tunnel.id'),
-      'port': int(os.environ.get('MIKROTIK_PORT', 3017)),
-      'user': os.environ.get('MIKROTIK_USER', 'admin'),
-      'password': os.environ.get('MIKROTIK_PASSWORD', ''),
-  }
-
-  # Check base config first if /tmp doesn't exist yet
-  base_config_file = os.path.join(base_dir, 'config.json')
-  if os.path.exists(base_config_file):
-    try:
-      with open(base_config_file, 'r') as f:
-        file_cfg = json.load(f)
-        default.update(file_cfg)
-    except Exception:
-      pass
-
-  if os.path.exists(CONFIG_PATH) and CONFIG_PATH != base_config_file:
-    try:
-      with open(CONFIG_PATH, 'r') as f:
-        file_cfg = json.load(f)
-        default.update(file_cfg)
-    except Exception:
-      pass
-
-  return default
-
+    default = dict(_in_memory_config)
+    
+    # Check base config first
+    base_config_file = os.path.join(base_dir, 'config.json')
+    if os.path.exists(base_config_file):
+        try:
+            with open(base_config_file, 'r') as f:
+                file_cfg = json.load(f)
+                default.update(file_cfg)
+        except Exception:
+            pass
+            
+    if os.path.exists(CONFIG_PATH) and CONFIG_PATH != base_config_file:
+        try:
+            with open(CONFIG_PATH, 'r') as f:
+                file_cfg = json.load(f)
+                default.update(file_cfg)
+        except Exception:
+            pass
+            
+    _in_memory_config.update(default)
+    return default
 
 def save_config(cfg):
-  try:
-    with open(CONFIG_PATH, 'w') as f:
-      json.dump(cfg, f, indent=2)
-  except Exception as e:
-    print(f'Warning saving config: {e}')
+    _in_memory_config.update(cfg)
+    try:
+        with open(CONFIG_PATH, 'w') as f:
+            json.dump(cfg, f, indent=2)
+    except Exception as e:
+        print(f"Warning saving config: {e}")
 
 
 def get_mikrotik_api():
