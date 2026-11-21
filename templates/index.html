@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin MikroTik - MIS Integral</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <header class="navbar">
+        <div class="nav-brand">
+            <img src="/static/img/logo.png" alt="Logo MIS Integral" class="nav-logo">
+            <div class="nav-title">
+                <h1>PANEL KONTROL MIKROTIK</h1>
+                <p>MIS Integral • Pendidikan Integral Berbasis Tauhid</p>
+            </div>
+        </div>
+        <div class="nav-actions">
+            <button class="btn btn-outline" onclick="refreshCurrentTab()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                Refresh
+            </button>
+            <button class="btn btn-outline" onclick="openSettingsModal()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                Pengaturan
+            </button>
+        </div>
+    </header>
+
+    <!-- Top Tab Navigation -->
+    <nav class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('tab-dashboard')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            Dashboard & Kendali
+        </button>
+        <button class="tab-btn" onclick="switchTab('tab-traffic')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            Live Monitoring & Grafik
+        </button>
+        <button class="tab-btn" onclick="switchTab('tab-users')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Data Pengguna Hotspot <span class="tab-badge" id="badgeTotalUsers">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('tab-profiles')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            Profil Kecepatan <span class="tab-badge" id="badgeTotalProfiles">0</span>
+        </button>
+    </nav>
+
+    <main class="container">
+
+        <!-- Error Banner -->
+        <div id="connErrorBanner" style="display: none; background: #fee2e2; border: 1px solid #f87171; color: #991b1b; padding: 12px 16px; border-radius: 9px; margin-bottom: 18px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span id="connErrorMsg">Tidak dapat terhubung ke MikroTik. Pastikan password & port API sudah benar.</span>
+                </div>
+                <button class="btn btn-secondary" style="font-size: 12px; padding: 5px 10px;" onclick="openSettingsModal()">Buka Pengaturan</button>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 1: DASHBOARD & KENDALI                      -->
+        <!-- ============================================== -->
+        <div id="tab-dashboard" class="tab-content active">
+            <!-- Mode Switcher Banner -->
+            <section id="modeCard" class="mode-card mode-harian">
+                <div class="mode-info-wrap">
+                    <div class="mode-badge-circle" id="modeIcon">🔒</div>
+                    <div>
+                        <div class="mode-title">STATUS MODE JARINGAN SAAT INI</div>
+                        <div class="mode-value" id="modeText">
+                            <span>MODE HARIAN</span>
+                            <span style="font-size: 12px; font-weight: 600; padding: 2px 7px; border-radius: 12px; background: #ecfdf5; color: #065f46;">HOTSPOT ON</span>
+                        </div>
+                        <p class="mode-desc" id="modeSub">Akses khusus Guru. Wajib login dengan username & password di <b>mis-integral.net</b>.</p>
+                    </div>
+                </div>
+                <div>
+                    <button id="btnSwitchMode" class="mode-btn-action btn-to-ujian" onclick="toggleMode()">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        Beralih ke MODE UJIAN
+                    </button>
+                </div>
+            </section>
+
+            <!-- Metric Cards -->
+            <section class="grid-metrics">
+                <div class="metric-card">
+                    <div class="metric-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+                    </div>
+                    <div>
+                        <div class="metric-label">CPU & Memori</div>
+                        <div class="metric-val" id="metricCpu">0% • - MB</div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                    <div>
+                        <div class="metric-label">Router Uptime</div>
+                        <div class="metric-val" id="metricUptime">-</div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                    </div>
+                    <div>
+                        <div class="metric-label">ISP 1 (Indibiz)</div>
+                        <div style="margin-top: 4px;">
+                            <span class="isp-badge online" id="badgeIndibiz"><span class="dot green"></span> Online</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                    </div>
+                    <div>
+                        <div class="metric-label">ISP 2 (Orbit)</div>
+                        <div style="margin-top: 4px;">
+                            <span class="isp-badge offline" id="badgeOrbit"><span class="dot red"></span> Nonaktif</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Active Users Hotspot Section -->
+            <section class="content-card">
+                <div class="card-head">
+                    <div class="card-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        Guru yang Sedang Terhubung (<span id="userCount">0</span> Aktif)
+                    </div>
+                    <button class="btn btn-secondary" onclick="fetchActiveUsers()">Refresh User Aktif</button>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>IP Address</th>
+                                <th>MAC Address</th>
+                                <th>Durasi Login</th>
+                                <th>Data Masuk/Keluar</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Memuat data pengguna...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Quick Maintenance -->
+            <section class="content-card" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <div style="font-weight: 700; font-size: 13.5px;">Tindakan Pemeliharaan Router</div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                        Router: <span id="boardName">MikroTik E50UG</span> • RouterOS v<span id="rosVersion">7.16.1</span>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);" onclick="confirmReboot()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+                    Reboot Router
+                </button>
+            </section>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 2: LIVE MONITORING & GRAFIK VISUAL         -->
+        <!-- ============================================== -->
+        <div id="tab-traffic" class="tab-content">
+            <!-- Real-Time Wave Chart Card (Indibiz WAN) -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                        Grafik Lalu-Lintas ISP 1 (Indibiz - ether1) Real-Time
+                    </div>
+                    <div class="chart-legend">
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: #0284c7;"></span>
+                            <span>Download (RX): <b id="chartValRxIndi">0 bps</b></span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: #16a34a;"></span>
+                            <span>Upload (TX): <b id="chartValTxIndi">0 bps</b></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-canvas-wrap">
+                    <canvas id="canvasIndibiz" class="traffic-canvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Real-Time Wave Chart Card (Port Ujian / LAN) -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        Grafik Penggunaan Bandwidth Port Ujian (ether3-LAN)
+                    </div>
+                    <div class="chart-legend">
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: #e5a924;"></span>
+                            <span>Trafik Klien: <b id="chartValLan">0 bps</b></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-canvas-wrap">
+                    <canvas id="canvasLan" class="traffic-canvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Numbers Grid -->
+            <div class="grid-traffic">
+                <div class="traffic-box">
+                    <div class="traffic-header">
+                        <span class="traffic-name">🌐 WAN 1 - Indibiz</span>
+                        <span class="isp-badge online" style="font-size: 10.5px;">ether1</span>
+                    </div>
+                    <div class="traffic-meter-group">
+                        <div class="traffic-stat">
+                            <span class="traffic-stat-label text-download">↓ Unduh (RX)</span>
+                            <div class="traffic-stat-val text-download" id="rx-indibiz">0 bps</div>
+                        </div>
+                        <div class="traffic-stat">
+                            <span class="traffic-stat-label text-upload">↑ Unggah (TX)</span>
+                            <div class="traffic-stat-val text-upload" id="tx-indibiz">0 bps</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="traffic-box">
+                    <div class="traffic-header">
+                        <span class="traffic-name">📡 WAN 2 - Orbit</span>
+                        <span class="isp-badge offline" style="font-size: 10.5px;">ether2</span>
+                    </div>
+                    <div class="traffic-meter-group">
+                        <div class="traffic-stat">
+                            <span class="traffic-stat-label text-download">↓ Unduh (RX)</span>
+                            <div class="traffic-stat-val text-download" id="rx-orbit">0 bps</div>
+                        </div>
+                        <div class="traffic-stat">
+                            <span class="traffic-stat-label text-upload">↑ Unggah (TX)</span>
+                            <div class="traffic-stat-val text-upload" id="tx-orbit">0 bps</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="traffic-box">
+                    <div class="traffic-header">
+                        <span class="traffic-name">💻 Port Ujian (PCQ LAN)</span>
+                        <span class="isp-badge" style="background:#e0f2fe; color:#0369a1; font-size:10.5px;">ether3</span>
+                    </div>
+                    <div class="traffic-meter-group">
+                        <div class="traffic-stat">
+                            <span class="traffic-stat-label text-download">↓ Unduh (TX)</span>
+                            <div class="traffic-stat-val text-download" id="tx-lan">0 bps</div>
+                        </div>
+                        <div class="traffic-stat">
+                            <span class="traffic-stat-label text-upload">↑ Unggah (RX)</span>
+                            <div class="traffic-stat-val text-upload" id="rx-lan">0 bps</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="traffic-box">
+                    <div class="traffic-header">
+                        <span class="traffic-name">🔒 Port Hotspot Guru</span>
+                        <span class="isp-badge" style="background:#fef3c7; color:#92400e; font-size:10.5px;">terkunci</span>
+                    </div>
+                    <div class="traffic-meter-group">
+                        <div class="traffic-stat">
+                            <span class="traffic-stat-label text-download">↓ Unduh (TX)</span>
+                            <div class="traffic-stat-val text-download" id="tx-terkunci">0 bps</div>
+                        </div>
+                        <div class="traffic-stat">
+                            <span class="traffic-stat-label text-upload">↑ Unggah (RX)</span>
+                            <div class="traffic-stat-val text-upload" id="rx-terkunci">0 bps</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 3: DATA PENGGUNA HOTSPOT (CRUD + EXPORT)   -->
+        <!-- ============================================== -->
+        <div id="tab-users" class="tab-content">
+            <section class="content-card">
+                <div class="card-head">
+                    <div>
+                        <h2 style="font-size: 16px; font-weight: 700;">Daftar Akun Hotspot Guru & Tenaga Pendidik</h2>
+                        <p style="font-size: 12px; color: var(--text-muted);">Kelola akun login dan ekspor laporan resmi untuk pihak sekolah</p>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <input type="text" id="searchUser" class="search-input" placeholder="Cari nama / username..." oninput="filterUserTable()">
+                        <button class="btn btn-secondary" onclick="exportUsersToCSV()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            Unduh Excel (CSV)
+                        </button>
+                        <button class="btn btn-secondary" onclick="openPrintModal()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                            Cetak Laporan Resmi
+                        </button>
+                        <button class="btn btn-primary" onclick="openAddUserModal()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            + Tambah Pengguna
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nama Lengkap Guru (Komentar)</th>
+                                <th>Username Login</th>
+                                <th>Password</th>
+                                <th>Profil Kecepatan</th>
+                                <th>Total Waktu Terpakai</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allUsersTableBody">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Memuat data akun...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 4: PROFIL BANDWIDTH / KECEPATAN (CRUD)     -->
+        <!-- ============================================== -->
+        <div id="tab-profiles" class="tab-content">
+            <section class="content-card">
+                <div class="card-head">
+                    <div>
+                        <h2 style="font-size: 16px; font-weight: 700;">Daftar Profil Kecepatan Hotspot</h2>
+                        <p style="font-size: 12px; color: var(--text-muted);">Atur batas download/upload dan jumlah perangkat per akun</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openAddProfileModal()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Tambah Profil Baru
+                    </button>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nama Profil</th>
+                                <th>Batas Kecepatan (Rate Limit)</th>
+                                <th>Maks. Perangkat (Shared Users)</th>
+                                <th>Tipe</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allProfilesTableBody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">Memuat profil kecepatan...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- ============================================== -->
+    <!-- MODAL: CETAK LAPORAN RESMI AKUN GURU           -->
+    <!-- ============================================== -->
+    <div id="printModal" class="modal-backdrop">
+        <div class="modal-dialog modal-dialog-large">
+            <div class="modal-header">
+                <h3 style="font-size: 15px; font-weight: 700;">Pratinjau Cetak Laporan Resmi</h3>
+                <button style="background: none; border: none; font-size: 18px; cursor: pointer;" onclick="closePrintModal()">&times;</button>
+            </div>
+            
+            <div id="printArea" class="print-paper" style="max-height: 480px; overflow-y: auto;">
+                <div class="print-kop">
+                    <img src="/static/img/logo.png" class="print-kop-logo" alt="Logo">
+                    <div class="print-kop-text">
+                        <h2>MADRASAH IBTIDAIYAH SWASTA (MIS) INTEGRAL</h2>
+                        <p><b>PENDIDIKAN INTEGRAL BERBASIS TAUHID</b></p>
+                        <p>KOTA TERNATE - MALUKU UTARA • DOMAIN: MIS-INTEGRAL.NET</p>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-bottom: 14px;">
+                    <h3 style="font-size: 14px; text-decoration: underline;">DAFTAR AKUN PENGGUNA HOTSPOT INTERNET GURU</h3>
+                    <p style="font-size: 11px; color: #475569; margin-top: 2px;">Tanggal Cetak: <span id="printDate">21 November 2026</span></p>
+                </div>
+
+                <table style="width: 100%; border: 1px solid #000; border-collapse: collapse; font-size: 12px;">
+                    <thead>
+                        <tr style="background: #f1f5f9;">
+                            <th style="border: 1px solid #000; padding: 6px; text-align: center; width: 40px;">No</th>
+                            <th style="border: 1px solid #000; padding: 6px;">Nama Lengkap Guru</th>
+                            <th style="border: 1px solid #000; padding: 6px;">Username Login</th>
+                            <th style="border: 1px solid #000; padding: 6px;">Profil Kecepatan</th>
+                            <th style="border: 1px solid #000; padding: 6px; text-align: center;">Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="printTableBody">
+                    </tbody>
+                </table>
+
+                <div class="print-signature-row">
+                    <div class="print-sig-col">
+                        <p>Mengetahui,</p>
+                        <p><b>Kepala Madrasah</b></p>
+                        <div style="height: 60px;"></div>
+                        <p><u>( ......................................... )</u></p>
+                    </div>
+                    <div class="print-sig-col">
+                        <p>Ternate, 21 November 2026</p>
+                        <p><b>Administrator Jaringan</b></p>
+                        <div style="height: 60px;"></div>
+                        <p><u>( Muh. Sattar Barakati )</u></p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+                <button class="btn btn-secondary" onclick="closePrintModal()">Tutup</button>
+                <button class="btn btn-primary" onclick="executePrint()">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    Cetak Dokumen Sekarang (PDF / Print)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- MODAL: TAMBAH / EDIT USER HOTSPOT              -->
+    <!-- ============================================== -->
+    <div id="userModal" class="modal-backdrop">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 id="userModalTitle" style="font-size: 15px; font-weight: 700;">Tambah Pengguna Hotspot</h3>
+                <button style="background: none; border: none; font-size: 18px; cursor: pointer;" onclick="closeUserModal()">&times;</button>
+            </div>
+            <input type="hidden" id="usrId">
+            <div class="form-group">
+                <label>Nama Lengkap Guru (Komentar)</label>
+                <input type="text" id="usrComment" class="form-control" placeholder="Contoh: NURQOMARIA S. Pd">
+            </div>
+            <div class="form-group">
+                <label>Username Login *</label>
+                <input type="text" id="usrName" class="form-control" placeholder="Contoh: nurqomaria">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="text" id="usrPass" class="form-control" placeholder="Biarkan kosong jika tidak diubah / tanpa sandi">
+            </div>
+            <div class="form-group">
+                <label>Profil Kecepatan</label>
+                <select id="usrProfile" class="form-control">
+                    <option value="Profil-Guru">Profil-Guru</option>
+                    <option value="default">default</option>
+                </select>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+                <button class="btn btn-secondary" onclick="closeUserModal()">Batal</button>
+                <button class="btn btn-primary" onclick="saveUser()">Simpan Pengguna</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- MODAL: TAMBAH / EDIT PROFIL HOTSPOT            -->
+    <!-- ============================================== -->
+    <div id="profileModal" class="modal-backdrop">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 id="profileModalTitle" style="font-size: 15px; font-weight: 700;">Tambah Profil Kecepatan</h3>
+                <button style="background: none; border: none; font-size: 18px; cursor: pointer;" onclick="closeProfileModal()">&times;</button>
+            </div>
+            <input type="hidden" id="profId">
+            <div class="form-group">
+                <label>Nama Profil *</label>
+                <input type="text" id="profName" class="form-control" placeholder="Contoh: Profil-Siswa">
+            </div>
+            <div class="form-group">
+                <label>Rate Limit (Upload/Download)</label>
+                <input type="text" id="profRate" class="form-control" placeholder="Contoh: 5M/5M atau 3M/3M">
+                <small style="font-size: 11px; color: var(--text-muted);">Format: [Upload]/[Download], misal 5M/5M</small>
+            </div>
+            <div class="form-group">
+                <label>Maks Perangkat Per Akun (Shared Users)</label>
+                <input type="number" id="profShared" class="form-control" value="1" min="1" max="50">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+                <button class="btn btn-secondary" onclick="closeProfileModal()">Batal</button>
+                <button class="btn btn-primary" onclick="saveProfile()">Simpan Profil</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- MODAL: PENGATURAN KONEKSI MIKROTIK             -->
+    <!-- ============================================== -->
+    <div id="settingsModal" class="modal-backdrop">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 style="font-size: 15px; font-weight: 700;">Pengaturan Koneksi MikroTik</h3>
+                <button style="background: none; border: none; font-size: 18px; cursor: pointer;" onclick="closeSettingsModal()">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>Host / IP Remote</label>
+                <input type="text" id="cfgHost" class="form-control" value="{{ config.host }}">
+                <small style="font-size: 11px; color: var(--text-muted);">Contoh: idn32.tunnel.id atau 192.168.100.1</small>
+            </div>
+            <div class="form-group">
+                <label>Port API MikroTik</label>
+                <input type="number" id="cfgPort" class="form-control" value="{{ config.port }}">
+                <small style="font-size: 11px; color: var(--text-muted);">Port API Tunnel ID (3017) atau lokal (8728)</small>
+            </div>
+            <div class="form-group">
+                <label>Username Router</label>
+                <input type="text" id="cfgUser" class="form-control" value="{{ config.user }}">
+            </div>
+            <div class="form-group">
+                <label>Password Router</label>
+                <input type="password" id="cfgPass" class="form-control" placeholder="Masukkan password router...">
+                <small style="font-size: 11px; color: var(--text-muted);">Kosongkan jika password tidak berubah</small>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+                <button class="btn btn-secondary" onclick="closeSettingsModal()">Batal</button>
+                <button class="btn btn-primary" onclick="saveSettings()">Simpan & Hubungkan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">Notifikasi</div>
+
+    <footer>
+        &copy; 2026 MIS Integral Ternate • Panel Administrasi & Monitoring Jaringan
+    </footer>
+
+    <script>
+        let currentMode = 'HARIAN';
+        let activeTab = 'tab-dashboard';
+        let cachedUsers = [];
+        let cachedProfiles = [];
+        let trafficInterval = null;
+
+        // Wave chart history buffers (30 points)
+        const MAX_POINTS = 30;
+        const historyIndiRx = new Array(MAX_POINTS).fill(0);
+        const historyIndiTx = new Array(MAX_POINTS).fill(0);
+        const historyLan = new Array(MAX_POINTS).fill(0);
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 3500);
+        }
+
+        function switchTab(tabId) {
+            activeTab = tabId;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            const targetBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+            if (targetBtn) targetBtn.classList.add('active');
+
+            const content = document.getElementById(tabId);
+            if (content) content.classList.add('active');
+
+            if (tabId === 'tab-traffic') {
+                fetchTraffic();
+                if (!trafficInterval) trafficInterval = setInterval(fetchTraffic, 2000);
+            } else {
+                if (trafficInterval) { clearInterval(trafficInterval); trafficInterval = null; }
+            }
+
+            if (tabId === 'tab-users') fetchHotspotUsers();
+            if (tabId === 'tab-profiles') fetchHotspotProfiles();
+        }
+
+        function refreshCurrentTab() {
+            fetchStatus();
+            if (activeTab === 'tab-users') fetchHotspotUsers();
+            if (activeTab === 'tab-profiles') fetchHotspotProfiles();
+            if (activeTab === 'tab-traffic') fetchTraffic();
+        }
+
+        // ----------------------------------------------------
+        // STATUS & DASHBOARD
+        // ----------------------------------------------------
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+
+                if (!data.success) {
+                    document.getElementById('connErrorBanner').style.display = 'block';
+                    document.getElementById('connErrorMsg').innerText = data.message || data.error;
+                    return;
+                }
+
+                document.getElementById('connErrorBanner').style.display = 'none';
+                currentMode = data.mode;
+
+                const card = document.getElementById('modeCard');
+                const btn = document.getElementById('btnSwitchMode');
+                const modeText = document.getElementById('modeText');
+                const modeIcon = document.getElementById('modeIcon');
+                const modeSub = document.getElementById('modeSub');
+
+                if (currentMode === 'HARIAN') {
+                    card.className = 'mode-card mode-harian';
+                    modeIcon.innerText = '🔒';
+                    modeText.innerHTML = '<span>MODE HARIAN</span> <span style="font-size: 12px; font-weight: 600; padding: 2px 7px; border-radius: 12px; background: #ecfdf5; color: #065f46;">HOTSPOT ON</span>';
+                    modeSub.innerHTML = 'Akses khusus Guru. Wajib login akun resmi di <b>mis-integral.net</b> (Limit 5 Mbps/Guru).';
+                    btn.className = 'mode-btn-action btn-to-ujian';
+                    btn.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> Beralih ke MODE UJIAN';
+                } else {
+                    card.className = 'mode-card mode-ujian';
+                    modeIcon.innerText = '⚡';
+                    modeText.innerHTML = '<span>MODE UJIAN</span> <span style="font-size: 12px; font-weight: 600; padding: 2px 7px; border-radius: 12px; background: #fef3c7; color: #92400e;">BEBAS LOGIN</span>';
+                    modeSub.innerHTML = 'Siswa langsung terhubung ke internet tanpa captive portal login. Pembagian bandwidth aktif via <b>PCQ 3 Mbps</b>.';
+                    btn.className = 'mode-btn-action btn-to-harian';
+                    btn.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> Kembalikan ke MODE HARIAN';
+                }
+
+                document.getElementById('metricCpu').innerText = data.cpu_load + ' • ' + data.free_memory + ' free';
+                document.getElementById('metricUptime').innerText = data.uptime;
+                document.getElementById('boardName').innerText = data.board_name;
+                document.getElementById('rosVersion').innerText = data.version;
+                document.getElementById('badgeTotalUsers').innerText = data.total_users_count || 0;
+                document.getElementById('badgeTotalProfiles').innerText = data.total_profiles_count || 0;
+
+                const bIndi = document.getElementById('badgeIndibiz');
+                bIndi.className = data.wan.indibiz ? 'isp-badge online' : 'isp-badge offline';
+                bIndi.innerHTML = data.wan.indibiz ? '<span class="dot green"></span> Online' : '<span class="dot red"></span> Putus';
+
+                const bOrbit = document.getElementById('badgeOrbit');
+                bOrbit.className = data.wan.orbit ? 'isp-badge online' : 'isp-badge offline';
+                bOrbit.innerHTML = data.wan.orbit ? '<span class="dot green"></span> Online' : '<span class="dot red"></span> Nonaktif';
+
+                fetchActiveUsers();
+            } catch (err) {
+                document.getElementById('connErrorBanner').style.display = 'block';
+            }
+        }
+
+        async function toggleMode() {
+            const nextMode = currentMode === 'HARIAN' ? 'UJIAN' : 'HARIAN';
+            const confirmMsg = nextMode === 'UJIAN'
+                ? 'Beralih ke MODE UJIAN?\n\n- Hotspot dimatikan (siswa bebas login tanpa portal).\n- Pembagian bandwidth PCQ 3 Mbps diaktifkan merata.'
+                : 'Kembalikan ke MODE HARIAN?\n\n- Hotspot diaktifkan kembali.\n- Akses internet wajib memasukkan akun guru.';
+
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                showToast('Sedang mengubah mode jaringan...');
+                const res = await fetch('/api/switch-mode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: nextMode })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message);
+                    fetchStatus();
+                } else {
+                    alert('Gagal: ' + data.error);
+                }
+            } catch (err) {
+                alert('Terjadi kesalahan koneksi.');
+            }
+        }
+
+        async function fetchActiveUsers() {
+            try {
+                const res = await fetch('/api/users/active');
+                const data = await res.json();
+                const tbody = document.getElementById('usersTableBody');
+                const countBadge = document.getElementById('userCount');
+
+                if (!data.success || !data.users || data.users.length === 0) {
+                    countBadge.innerText = '0';
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 18px;">${currentMode === 'UJIAN' ? 'Mode Ujian Aktif: Tidak ada guru yang login captive portal.' : 'Belum ada guru yang terhubung ke hotspot saat ini.'}</td></tr>`;
+                    return;
+                }
+
+                countBadge.innerText = data.users.length;
+                tbody.innerHTML = '';
+                data.users.forEach(u => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td style="font-weight: 600;">${u.user}</td>
+                        <td>${u.address}</td>
+                        <td style="font-family: monospace; font-size: 11.5px;">${u.mac}</td>
+                        <td>${u.uptime}</td>
+                        <td>${u.bytes_in} / ${u.bytes_out}</td>
+                        <td><button class="btn-kick" onclick="kickUser('${u.id}', '${u.user}')">Kick</button></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (err) {}
+        }
+
+        async function kickUser(userId, username) {
+            if (!confirm(`Keluarkan ${username} dari hotspot?`)) return;
+            try {
+                const res = await fetch('/api/users/kick', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: userId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`User ${username} berhasil di-kick`);
+                    fetchActiveUsers();
+                } else {
+                    alert(data.error);
+                }
+            } catch (err) { alert('Gagal kick user'); }
+        }
+
+        // ----------------------------------------------------
+        // LIVE TRAFFIC MONITOR & CANVAS WAVE CHART
+        // ----------------------------------------------------
+        async function fetchTraffic() {
+            try {
+                const res = await fetch('/api/traffic');
+                const data = await res.json();
+                if (data.success && data.traffic) {
+                    const t = data.traffic;
+                    if (t['ether1-indibiz']) {
+                        document.getElementById('rx-indibiz').innerText = t['ether1-indibiz'].rx_formatted;
+                        document.getElementById('tx-indibiz').innerText = t['ether1-indibiz'].tx_formatted;
+                        document.getElementById('chartValRxIndi').innerText = t['ether1-indibiz'].rx_formatted;
+                        document.getElementById('chartValTxIndi').innerText = t['ether1-indibiz'].tx_formatted;
+
+                        historyIndiRx.shift();
+                        historyIndiRx.push(t['ether1-indibiz'].rx_raw);
+                        historyIndiTx.shift();
+                        historyIndiTx.push(t['ether1-indibiz'].tx_raw);
+                    }
+                    if (t['ether2-Orbit']) {
+                        document.getElementById('rx-orbit').innerText = t['ether2-Orbit'].rx_formatted;
+                        document.getElementById('tx-orbit').innerText = t['ether2-Orbit'].tx_formatted;
+                    }
+                    if (t['ether3-LAN']) {
+                        document.getElementById('tx-lan').innerText = t['ether3-LAN'].tx_formatted;
+                        document.getElementById('rx-lan').innerText = t['ether3-LAN'].rx_formatted;
+                        document.getElementById('chartValLan').innerText = t['ether3-LAN'].tx_formatted;
+
+                        historyLan.shift();
+                        historyLan.push(t['ether3-LAN'].tx_raw);
+                    }
+                    if (t['terkunci']) {
+                        document.getElementById('tx-terkunci').innerText = t['terkunci'].tx_formatted;
+                        document.getElementById('rx-terkunci').innerText = t['terkunci'].rx_formatted;
+                    }
+
+                    // Render Canvas Charts
+                    drawWaveChart('canvasIndibiz', [
+                        { data: historyIndiRx, color: '#0284c7', fillColor: 'rgba(2, 132, 199, 0.15)' },
+                        { data: historyIndiTx, color: '#16a34a', fillColor: 'rgba(22, 163, 74, 0.12)' }
+                    ]);
+
+                    drawWaveChart('canvasLan', [
+                        { data: historyLan, color: '#e5a924', fillColor: 'rgba(229, 169, 36, 0.18)' }
+                    ]);
+                }
+            } catch (err) {}
+        }
+
+        function drawWaveChart(canvasId, seriesList) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+
+            if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+            }
+
+            ctx.resetTransform();
+            ctx.scale(dpr, dpr);
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // Find max value across all series with min floor (1 Mbps = 1000000 bps)
+            let maxVal = 1000000;
+            seriesList.forEach(s => {
+                s.data.forEach(val => { if (val > maxVal) maxVal = val; });
+            });
+            maxVal = maxVal * 1.2; // 20% head room
+
+            // Grid lines
+            ctx.strokeStyle = '#f1f5f9';
+            ctx.lineWidth = 1;
+            for (let i = 1; i <= 4; i++) {
+                const y = (h / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+
+            // Draw series curves
+            seriesList.forEach(s => {
+                const step = w / (MAX_POINTS - 1);
+                ctx.beginPath();
+                ctx.moveTo(0, h);
+
+                for (let i = 0; i < MAX_POINTS; i++) {
+                    const x = i * step;
+                    const y = h - (s.data[i] / maxVal) * (h - 15);
+                    if (i === 0) ctx.lineTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+
+                ctx.lineTo(w, h);
+                ctx.closePath();
+                ctx.fillStyle = s.fillColor;
+                ctx.fill();
+
+                // Stroke curve
+                ctx.beginPath();
+                for (let i = 0; i < MAX_POINTS; i++) {
+                    const x = i * step;
+                    const y = h - (s.data[i] / maxVal) * (h - 15);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.strokeStyle = s.color;
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+            });
+        }
+
+        // ----------------------------------------------------
+        // USER CRUD & EXPORT / PRINT
+        // ----------------------------------------------------
+        async function fetchHotspotUsers() {
+            try {
+                const res = await fetch('/api/hotspot/users');
+                const data = await res.json();
+                const tbody = document.getElementById('allUsersTableBody');
+
+                if (!data.success || !data.users) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--danger); padding: 18px;">Gagal memuat pengguna.</td></tr>`;
+                    return;
+                }
+
+                cachedUsers = data.users;
+                document.getElementById('badgeTotalUsers').innerText = cachedUsers.length;
+                renderUsersTable(cachedUsers);
+                updateProfileDropdown();
+            } catch (err) {}
+        }
+
+        function renderUsersTable(users) {
+            const tbody = document.getElementById('allUsersTableBody');
+            if (users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Tidak ada pengguna ditemukan.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            users.forEach(u => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="font-weight: 600;">${u.comment || '<span style="color:#94a3b8; font-style:italic;">(Tanpa Nama)</span>'}</td>
+                    <td><code>${u.name}</code></td>
+                    <td><span style="font-family: monospace; color:#64748b;">${u.password || '******'}</span></td>
+                    <td><span class="tab-badge" style="background:#e0f2fe; color:#0369a1; font-weight:600;">${u.profile}</span></td>
+                    <td style="font-size:12px; color:#64748b;">${u.uptime}</td>
+                    <td>
+                        <div class="btn-action-group">
+                            <button class="btn-icon btn-edit" onclick="openEditUserModal('${u.id}')">Edit</button>
+                            <button class="btn-icon btn-delete" onclick="deleteUser('${u.id}', '${u.name}')">Hapus</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function filterUserTable() {
+            const query = document.getElementById('searchUser').value.toLowerCase();
+            const filtered = cachedUsers.filter(u => 
+                (u.name && u.name.toLowerCase().includes(query)) ||
+                (u.comment && u.comment.toLowerCase().includes(query)) ||
+                (u.profile && u.profile.toLowerCase().includes(query))
+            );
+            renderUsersTable(filtered);
+        }
+
+        function exportUsersToCSV() {
+            if (!cachedUsers || cachedUsers.length === 0) {
+                alert('Tidak ada data pengguna untuk diekspor.');
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "No,Nama Lengkap Guru,Username,Password,Profil Kecepatan,Waktu Pemakaian\r\n";
+
+            cachedUsers.forEach((u, index) => {
+                const comment = `"${(u.comment || '').replace(/"/g, '""')}"`;
+                const name = `"${u.name}"`;
+                const pass = `"${u.password}"`;
+                const prof = `"${u.profile}"`;
+                const uptime = `"${u.uptime}"`;
+                csvContent += `${index + 1},${comment},${name},${pass},${prof},${uptime}\r\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Daftar_Akun_Guru_MIS_Integral_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('File CSV berhasil diunduh!');
+        }
+
+        function openPrintModal() {
+            const tbody = document.getElementById('printTableBody');
+            tbody.innerHTML = '';
+            
+            const now = new Date();
+            const options = { day: 'numeric', month: 'long', year: 'numeric' };
+            const todayStr = now.toLocaleDateString('id-ID', options);
+            document.getElementById('printDate').innerText = todayStr;
+
+            cachedUsers.forEach((u, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="border: 1px solid #000; padding: 6px; text-align: center;">${index + 1}</td>
+                    <td style="border: 1px solid #000; padding: 6px; font-weight: 600;">${u.comment || '-'}</td>
+                    <td style="border: 1px solid #000; padding: 6px; font-family: monospace;">${u.name}</td>
+                    <td style="border: 1px solid #000; padding: 6px;">${u.profile}</td>
+                    <td style="border: 1px solid #000; padding: 6px; text-align: center;">Aktif</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('printModal').classList.add('show');
+        }
+
+        function closePrintModal() {
+            document.getElementById('printModal').classList.remove('show');
+        }
+
+        function executePrint() {
+            window.print();
+        }
+
+        function openAddUserModal() {
+            document.getElementById('userModalTitle').innerText = 'Tambah Pengguna Hotspot Baru';
+            document.getElementById('usrId').value = '';
+            document.getElementById('usrName').value = '';
+            document.getElementById('usrPass').value = '';
+            document.getElementById('usrComment').value = '';
+            document.getElementById('userModal').classList.add('show');
+        }
+
+        function openEditUserModal(userId) {
+            const u = cachedUsers.find(x => x.id === userId);
+            if (!u) return;
+            document.getElementById('userModalTitle').innerText = 'Edit Pengguna: ' + u.name;
+            document.getElementById('usrId').value = u.id;
+            document.getElementById('usrName').value = u.name;
+            document.getElementById('usrPass').value = u.password === '******' ? '' : u.password;
+            document.getElementById('usrComment').value = u.comment || '';
+            document.getElementById('usrProfile').value = u.profile || 'Profil-Guru';
+            document.getElementById('userModal').classList.add('show');
+        }
+
+        function closeUserModal() {
+            document.getElementById('userModal').classList.remove('show');
+        }
+
+        async function saveUser() {
+            const id = document.getElementById('usrId').value;
+            const name = document.getElementById('usrName').value.trim();
+            const password = document.getElementById('usrPass').value.trim();
+            const comment = document.getElementById('usrComment').value.trim();
+            const profile = document.getElementById('usrProfile').value;
+
+            if (!name) { alert('Username wajib diisi!'); return; }
+
+            const endpoint = id ? '/api/hotspot/users/edit' : '/api/hotspot/users/add';
+            const payload = id ? { id, name, password, comment, profile } : { name, password, comment, profile };
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message);
+                    closeUserModal();
+                    fetchHotspotUsers();
+                } else {
+                    alert('Gagal: ' + data.error);
+                }
+            } catch (err) { alert('Terjadi kesalahan.'); }
+        }
+
+        async function deleteUser(userId, userName) {
+            if (!confirm(`Hapus pengguna ${userName}?`)) return;
+            try {
+                const res = await fetch('/api/hotspot/users/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: userId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message);
+                    fetchHotspotUsers();
+                } else {
+                    alert('Gagal: ' + data.error);
+                }
+            } catch (err) { alert('Terjadi kesalahan.'); }
+        }
+
+        // ----------------------------------------------------
+        // PROFILE CRUD
+        // ----------------------------------------------------
+        async function fetchHotspotProfiles() {
+            try {
+                const res = await fetch('/api/hotspot/profiles');
+                const data = await res.json();
+                const tbody = document.getElementById('allProfilesTableBody');
+
+                if (!data.success || !data.profiles) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--danger); padding: 18px;">Gagal memuat profil.</td></tr>`;
+                    return;
+                }
+
+                cachedProfiles = data.profiles;
+                document.getElementById('badgeTotalProfiles').innerText = cachedProfiles.length;
+                renderProfilesTable(cachedProfiles);
+                updateProfileDropdown();
+            } catch (err) {}
+        }
+
+        function renderProfilesTable(profiles) {
+            const tbody = document.getElementById('allProfilesTableBody');
+            tbody.innerHTML = '';
+            profiles.forEach(p => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="font-weight: 700;">${p.name} ${p.default ? '<span style="font-size:11px; background:#e2e8f0; color:#334155; padding:2px 6px; border-radius:10px;">Default</span>' : ''}</td>
+                    <td><span class="tab-badge" style="background:#fef3c7; color:#92400e; font-weight:700;">${p.rate_limit || 'Unlimited'}</span></td>
+                    <td><b>${p.shared_users}</b> Perangkat</td>
+                    <td>${p.default ? 'Sistem' : 'Kustom'}</td>
+                    <td>
+                        <div class="btn-action-group">
+                            <button class="btn-icon btn-edit" onclick="openEditProfileModal('${p.id}')">Edit</button>
+                            ${!p.default ? `<button class="btn-icon btn-delete" onclick="deleteProfile('${p.id}', '${p.name}')">Hapus</button>` : ''}
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateProfileDropdown() {
+            const sel = document.getElementById('usrProfile');
+            if (!sel || cachedProfiles.length === 0) return;
+            const curVal = sel.value;
+            sel.innerHTML = '';
+            cachedProfiles.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.name;
+                opt.innerText = `${p.name} (${p.rate_limit || 'Unlimited'})`;
+                sel.appendChild(opt);
+            });
+            if (curVal) sel.value = curVal;
+        }
+
+        function openAddProfileModal() {
+            document.getElementById('profileModalTitle').innerText = 'Tambah Profil Kecepatan Baru';
+            document.getElementById('profId').value = '';
+            document.getElementById('profName').value = '';
+            document.getElementById('profRate').value = '5M/5M';
+            document.getElementById('profShared').value = '1';
+            document.getElementById('profileModal').classList.add('show');
+        }
+
+        function openEditProfileModal(profId) {
+            const p = cachedProfiles.find(x => x.id === profId);
+            if (!p) return;
+            document.getElementById('profileModalTitle').innerText = 'Edit Profil: ' + p.name;
+            document.getElementById('profId').value = p.id;
+            document.getElementById('profName').value = p.name;
+            document.getElementById('profRate').value = p.rate_limit === 'Unlimited' ? '' : p.rate_limit;
+            document.getElementById('profShared').value = p.shared_users || '1';
+            document.getElementById('profileModal').classList.add('show');
+        }
+
+        function closeProfileModal() {
+            document.getElementById('profileModal').classList.remove('show');
+        }
+
+        async function saveProfile() {
+            const id = document.getElementById('profId').value;
+            const name = document.getElementById('profName').value.trim();
+            const rate_limit = document.getElementById('profRate').value.trim();
+            const shared_users = document.getElementById('profShared').value;
+
+            if (!name) { alert('Nama profil wajib diisi!'); return; }
+
+            const endpoint = id ? '/api/hotspot/profiles/edit' : '/api/hotspot/profiles/add';
+            const payload = id ? { id, name, rate_limit, shared_users } : { name, rate_limit, shared_users };
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message);
+                    closeProfileModal();
+                    fetchHotspotProfiles();
+                } else {
+                    alert('Gagal: ' + data.error);
+                }
+            } catch (err) { alert('Terjadi kesalahan.'); }
+        }
+
+        async function deleteProfile(profId, profName) {
+            if (!confirm(`Hapus profil ${profName}?`)) return;
+            try {
+                const res = await fetch('/api/hotspot/profiles/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: profId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message);
+                    fetchHotspotProfiles();
+                } else {
+                    alert('Gagal: ' + data.error);
+                }
+            } catch (err) { alert('Terjadi kesalahan.'); }
+        }
+
+        // ----------------------------------------------------
+        // SYSTEM MAINTENANCE & SETTINGS
+        // ----------------------------------------------------
+        async function confirmReboot() {
+            if (!confirm('PERINGATAN: Apakah Anda yakin ingin melakukan REBOOT router sekarang?\n\nKoneksi internet sekolah akan terputus selama 1-2 menit.')) return;
+            try {
+                const res = await fetch('/api/reboot', { method: 'POST' });
+                const data = await res.json();
+                alert(data.message || 'Perintah reboot terkirim.');
+            } catch (err) { alert('Gagal mengirim perintah reboot.'); }
+        }
+
+        function openSettingsModal() {
+            document.getElementById('settingsModal').classList.add('show');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('show');
+        }
+
+        async function saveSettings() {
+            const host = document.getElementById('cfgHost').value;
+            const port = document.getElementById('cfgPort').value;
+            const user = document.getElementById('cfgUser').value;
+            const password = document.getElementById('cfgPass').value;
+
+            try {
+                const res = await fetch('/api/save-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ host, port, user, password })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Pengaturan disimpan! Mencoba menghubungkan kembali...');
+                    closeSettingsModal();
+                    fetchStatus();
+                }
+            } catch (err) { alert('Gagal menyimpan pengaturan.'); }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchStatus();
+            fetchHotspotProfiles();
+            setInterval(() => {
+                if (activeTab === 'tab-dashboard') fetchStatus();
+            }, 10000);
+        });
+    </script>
+</body>
+</html>
