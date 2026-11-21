@@ -84,7 +84,6 @@ def format_bps(bps):
 
 
 @app.route('/')
-@app.route('/api/index')
 def index():
   cfg = load_config()
   safe_cfg = {
@@ -94,6 +93,18 @@ def index():
       'has_password': bool(cfg.get('password')),
   }
   return render_template('index.html', config=safe_cfg)
+
+
+@app.route('/debug-env')
+@app.route('/api/debug-env')
+def debug_env():
+  return jsonify({
+      'path': request.path,
+      'full_path': request.full_path,
+      'url': request.url,
+      'args': dict(request.args),
+      'environ': {k: str(v) for k, v in request.environ.items() if not k.startswith('wsgi.') and 'KEY' not in k and 'SECRET' not in k}
+  })
 
 
 @app.route('/static/<path:filename>')
