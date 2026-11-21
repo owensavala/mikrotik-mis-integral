@@ -95,9 +95,8 @@ def index():
   return render_template('index.html', config=safe_cfg)
 
 
-@app.route('/debug-env')
-@app.route('/api/debug-env')
-def debug_env():
+@app.route('/api/index')
+def api_index_debug():
   return jsonify({
       'path': request.path,
       'full_path': request.full_path,
@@ -105,6 +104,7 @@ def debug_env():
       'args': dict(request.args),
       'environ': {k: str(v) for k, v in request.environ.items() if not k.startswith('wsgi.') and 'KEY' not in k and 'SECRET' not in k}
   })
+
 
 
 @app.route('/static/<path:filename>')
