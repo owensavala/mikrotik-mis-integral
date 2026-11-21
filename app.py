@@ -1,6 +1,6 @@
 import json
 import os
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import routeros_api
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -91,6 +91,11 @@ def index():
       'has_password': bool(cfg.get('password')),
   }
   return render_template('index.html', config=safe_cfg)
+
+
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+  return send_from_directory(os.path.join(base_dir, 'static'), filename)
 
 
 # ----------------------------------------------------
