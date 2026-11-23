@@ -254,7 +254,24 @@ def get_status():
       hotspot_enabled = disabled_val in ['false', False]
 
     # Active Hotspot Users
-    active_users = api.get_resource('/ip/hotspot/active').get()
+    active_users = []
+    try:
+      active_users = api.get_resource('/ip/hotspot/active').get()
+    except Exception:
+      pass
+
+    # Active DHCP Leases (Klien Ujian ether3-LAN)
+    exam_clients = []
+    try:
+      leases = api.get_resource('/ip/dhcp-server/lease').get()
+      exam_clients = [
+          l for l in leases
+          if l.get('server') == 'dhcp1'
+          or l.get('status') == 'bound'
+          or l.get('address', '').startswith('192.168.100.')
+      ]
+    except Exception:
+      pass
 
     # Total Registered Hotspot Users
     all_users = api.get_resource('/ip/hotspot/user').get()
@@ -274,6 +291,9 @@ def get_status():
         wan_status['orbit'] = running
 
     current_mode = 'HARIAN' if hotspot_enabled else 'UJIAN'
+    hotspot_active_count = len(active_users)
+    exam_active_count = len(exam_clients)
+    active_users_count = exam_active_count if current_mode == 'UJIAN' else hotspot_active_count
 
     return jsonify({
         'success': True,
@@ -290,11 +310,14 @@ def get_status():
         'uptime': system_info.get('uptime', '-'),
         'version': system_info.get('version', '-'),
         'board_name': system_info.get('board-name', '-'),
-        'active_users_count': len(active_users),
+        'active_users_count': active_users_count,
+        'hotspot_active_count': hotspot_active_count,
+        'exam_active_count': exam_active_count,
         'total_users_count': len(all_users),
         'total_profiles_count': len(all_profiles),
         'wan': wan_status,
     })
+
   except Exception as e:
     return (
         jsonify({
@@ -406,26 +429,105 @@ def get_traffic():
 
 
 # ----------------------------------------------------
-# 2. ACTIVE USERS
+# 2. ACTIVE USERS & EXAM CLIENTS
 # ----------------------------------------------------
 @app.route('/api/users/active', methods=['GET'])
 def get_active_users():
   pool = None
   try:
     pool, api = get_mikrotik_api()
-    active_users = api.get_resource('/ip/hotspot/active').get()
-    users_data = []
-    for u in active_users:
-      users_data.append({
-          'id': u.get('id') or u.get('.id'),
-          'user': u.get('user', '-'),
-          'address': u.get('address', '-'),
-          'mac': u.get('mac-address', '-'),
-          'uptime': u.get('uptime', '-'),
-          'bytes_in': u.get('bytes-in-nice', u.get('bytes-in', '-')),
-          'bytes_out': u.get('bytes-out-nice', u.get('bytes-out', '-')),
-      })
-    return jsonify({'success': True, 'users': users_data})
+
+    # 1. Determine current network mode
+    hs_list = api.get_resource('/ip/hotspot').get()
+    hotspot_enabled = True
+    if hs_list:
+      disabled_val = hs_list[0].get('disabled', 'false')
+      hotspot_enabled = disabled_val in ['false', False]
+    current_mode = 'HARIAN' if hotspot_enabled else 'UJIAN'
+
+    # Filter parameter: 'auto' (default), 'dhcp' (klien ujian), 'hotspot' (guru), 'all'
+    view_type = request.args.get('type', 'auto').lower()
+    if view_type == 'auto':
+      target_type = 'dhcp' if current_mode == 'UJIAN' else 'hotspot'
+    else:
+      target_type = view_type
+
+    # 2. Fetch Hotspot Active Users
+    hotspot_users = []
+    try:
+      hs_active = api.get_resource('/ip/hotspot/active').get()
+      for u in hs_active:
+        hotspot_users.append({
+            'id': u.get('id') or u.get('.id'),
+            'type': 'hotspot',
+            'user': u.get('user', '-'),
+            'name': u.get('user', '-'),
+            'address': u.get('address', '-'),
+            'mac': u.get('mac-address', '-'),
+            'uptime': u.get('uptime', '-'),
+            'bytes_in': u.get('bytes-in-nice', u.get('bytes-in', '-')),
+            'bytes_out': u.get('bytes-out-nice', u.get('bytes-out', '-')),
+            'server': 'terkunci (Hotspot)',
+            'status': 'Aktif Login',
+        })
+    except Exception:
+      pass
+
+    # 3. Fetch DHCP Leases & ARP for Exam Clients (ether3-LAN)
+    dhcp_clients = []
+    try:
+      dhcp_leases = api.get_resource('/ip/dhcp-server/lease').get()
+      arp_list = api.get_resource('/ip/arp').get()
+      arp_active_ips = {a.get('address'): a for a in arp_list if a.get('complete') in ['true', True]}
+
+      for l in dhcp_leases:
+        status = l.get('status', 'bound')
+        addr = l.get('address', l.get('active-address', '-'))
+        mac = l.get('mac-address', l.get('active-mac-address', '-'))
+        hostname = l.get('host-name', '').strip()
+        server = l.get('server', l.get('active-server', 'dhcp1'))
+
+        # Only list bound/active leases or ether3-LAN leases
+        if status in ['bound', 'waiting', 'busy'] or addr.startswith('192.168.100.'):
+          display_name = hostname if hostname else f'Perangkat Ujian ({addr})'
+          server_label = 'ether3-LAN (dhcp1)' if server == 'dhcp1' else f'{server} (Hotspot)'
+          is_online = addr in arp_active_ips
+
+          dhcp_clients.append({
+              'id': l.get('id') or l.get('.id'),
+              'type': 'dhcp',
+              'user': display_name,
+              'name': display_name,
+              'hostname': hostname or '-',
+              'address': addr,
+              'mac': mac,
+              'uptime': l.get('age', l.get('last-seen', '-')),
+              'expires_after': l.get('expires-after', '-'),
+              'last_seen': l.get('last-seen', '-'),
+              'server': server_label,
+              'status': 'Aktif (Online)' if is_online else f'Lease ({status})',
+              'bytes_in': '-',
+              'bytes_out': '-',
+          })
+    except Exception:
+      pass
+
+    if target_type == 'dhcp':
+      result_users = dhcp_clients
+    elif target_type == 'hotspot':
+      result_users = hotspot_users
+    else:  # 'all'
+      result_users = hotspot_users + dhcp_clients
+
+    return jsonify({
+        'success': True,
+        'mode': current_mode,
+        'target_type': target_type,
+        'hotspot_count': len(hotspot_users),
+        'exam_count': len(dhcp_clients),
+        'total_count': len(result_users),
+        'users': result_users,
+    })
   except Exception as e:
     return jsonify({'success': False, 'error': str(e)}), 500
   finally:
@@ -440,14 +542,22 @@ def get_active_users():
 def kick_user():
   data = request.json or {}
   user_id = data.get('id')
+  user_type = data.get('type', 'hotspot')
   if not user_id:
     return jsonify({'success': False, 'error': 'ID user tidak ditemukan'}), 400
 
   pool = None
   try:
     pool, api = get_mikrotik_api()
-    api.get_resource('/ip/hotspot/active').remove(id=user_id)
-    return jsonify({'success': True, 'message': 'User berhasil dikeluarkan!'})
+    if user_type == 'dhcp':
+      api.get_resource('/ip/dhcp-server/lease').remove(id=user_id)
+      return jsonify({
+          'success': True,
+          'message': 'Sesi lease DHCP perangkat ujian berhasil di-reset!',
+      })
+    else:
+      api.get_resource('/ip/hotspot/active').remove(id=user_id)
+      return jsonify({'success': True, 'message': 'User hotspot berhasil dikeluarkan!'})
   except Exception as e:
     return jsonify({'success': False, 'error': str(e)}), 500
   finally:
@@ -456,6 +566,7 @@ def kick_user():
         pool.disconnect()
       except Exception:
         pass
+
 
 
 # ----------------------------------------------------

@@ -104,8 +104,12 @@ tr:hover { background: #f8fafc; }
 .btn-edit:hover { background: #0284c7; color: #fff; }
 .btn-delete { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
 .btn-delete:hover { background: #ef4444; color: #fff; }
-.btn-kick { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; padding: 4px 10px; font-size: 11.5px; font-weight: 600; border-radius: 6px; cursor: pointer; }
+.btn-kick { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; padding: 4px 10px; font-size: 11.5px; font-weight: 600; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
 .btn-kick:hover { background: #e11d48; color: #fff; }
+.pill-btn { border: none; background: transparent; padding: 5px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 4px; }
+.pill-btn:hover { color: var(--text-dark); background: rgba(0,0,0,0.04); }
+.pill-btn.active { background: #ffffff; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.12); font-weight: 700; }
+
 .btn { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border: none; transition: all 0.2s; }
 .btn-primary { background: var(--primary); color: #ffffff; }
 .btn-primary:hover { background: var(--primary-light); }
@@ -275,25 +279,40 @@ footer { text-align: center; padding: 16px; font-size: 11.5px; color: var(--text
                 </div>
             </section>
 
-            <!-- Active Users Hotspot Section -->
+            <!-- Active Users Hotspot / Exam Clients Section -->
             <section class="content-card">
                 <div class="card-head">
-                    <div class="card-title">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                        Guru yang Sedang Terhubung (<span id="userCount">0</span> Aktif)
+                    <div>
+                        <div class="card-title" id="activeUserHeader" style="display: flex; align-items: center; gap: 8px;">
+                            <span id="activeUserIcon" style="font-size: 18px;">👥</span>
+                            <span id="activeUserTitle">Guru yang Sedang Terhubung</span> (<span id="userCount">0</span> Aktif)
+                        </div>
+                        <div id="activeUserSubtitle" style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">
+                            Guru yang terautentikasi melalui portal login Hotspot
+                        </div>
                     </div>
-                    <button class="btn btn-secondary" onclick="fetchActiveUsers()">Refresh User Aktif</button>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <div class="user-filter-pills" style="display: flex; background: #f1f5f9; padding: 3px; border-radius: 8px; border: 1px solid var(--border);">
+                            <button class="pill-btn active" id="pillAuto" onclick="setUserViewFilter('auto')">⚡ Sesuai Mode</button>
+                            <button class="pill-btn" id="pillUjian" onclick="setUserViewFilter('dhcp')">💻 Klien Ujian (<span id="pillCountExam">0</span>)</button>
+                            <button class="pill-btn" id="pillHarian" onclick="setUserViewFilter('hotspot')">👥 Hotspot Guru (<span id="pillCountHotspot">0</span>)</button>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="fetchActiveUsers()" title="Muat ulang daftar">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                            Refresh
+                        </button>
+                    </div>
                 </div>
 
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Username</th>
+                            <tr id="activeUsersThead">
+                                <th id="thColUser">Username Guru</th>
                                 <th>IP Address</th>
                                 <th>MAC Address</th>
-                                <th>Durasi Login</th>
-                                <th>Data Masuk/Keluar</th>
+                                <th id="thColUptime">Durasi Login</th>
+                                <th id="thColExtra">Data Masuk/Keluar</th>
                                 <th>Aksi</th>
                             </tr>
                         </thead>
@@ -305,6 +324,7 @@ footer { text-align: center; padding: 16px; font-size: 11.5px; color: var(--text
                     </table>
                 </div>
             </section>
+
 
             <!-- Quick Maintenance -->
             <section class="content-card" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
@@ -930,7 +950,13 @@ footer { text-align: center; padding: 16px; font-size: 11.5px; color: var(--text
                 bOrbit.className = data.wan.orbit ? 'isp-badge online' : 'isp-badge offline';
                 bOrbit.innerHTML = data.wan.orbit ? '<span class="dot green"></span> Online' : '<span class="dot red"></span> Nonaktif';
 
+                const pExam = document.getElementById('pillCountExam');
+                const pHotspot = document.getElementById('pillCountHotspot');
+                if (pExam && data.exam_active_count !== undefined) pExam.innerText = data.exam_active_count;
+                if (pHotspot && data.hotspot_active_count !== undefined) pHotspot.innerText = data.hotspot_active_count;
+
                 fetchActiveUsers();
+
             } catch (err) {
                 document.getElementById('connErrorBanner').style.display = 'block';
             }
@@ -963,16 +989,64 @@ footer { text-align: center; padding: 16px; font-size: 11.5px; color: var(--text
             }
         }
 
+        let userFilterView = 'auto';
+
+        function setUserViewFilter(view) {
+            userFilterView = view;
+            document.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+            if (view === 'auto') {
+                const btn = document.getElementById('pillAuto');
+                if (btn) btn.classList.add('active');
+            } else if (view === 'dhcp') {
+                const btn = document.getElementById('pillUjian');
+                if (btn) btn.classList.add('active');
+            } else if (view === 'hotspot') {
+                const btn = document.getElementById('pillHarian');
+                if (btn) btn.classList.add('active');
+            }
+            fetchActiveUsers();
+        }
+
         async function fetchActiveUsers() {
             try {
-                const res = await fetch('/api/users/active');
+                const res = await fetch(`/api/users/active?type=${userFilterView}`);
                 const data = await res.json();
                 const tbody = document.getElementById('usersTableBody');
                 const countBadge = document.getElementById('userCount');
+                const pillExam = document.getElementById('pillCountExam');
+                const pillHotspot = document.getElementById('pillCountHotspot');
+                const userHeaderTitle = document.getElementById('activeUserTitle');
+                const userHeaderIcon = document.getElementById('activeUserIcon');
+                const userHeaderSubtitle = document.getElementById('activeUserSubtitle');
+
+                if (pillExam) pillExam.innerText = data.exam_count !== undefined ? data.exam_count : 0;
+                if (pillHotspot) pillHotspot.innerText = data.hotspot_count !== undefined ? data.hotspot_count : 0;
+
+                const isDhcpMode = data.target_type === 'dhcp';
+
+                // Update dynamic headers & text according to active mode/filter
+                if (userHeaderIcon) userHeaderIcon.innerText = isDhcpMode ? '💻' : '👥';
+                if (userHeaderTitle) userHeaderTitle.innerText = isDhcpMode ? 'Siswa / Perangkat Ujian yang Sedang Terhubung' : 'Guru yang Sedang Terhubung';
+                if (userHeaderSubtitle) {
+                    userHeaderSubtitle.innerText = isDhcpMode 
+                        ? 'Perangkat siswa terhubung langsung via Port ether3-LAN (Bebas Captive Portal • Limit Bandwidth PCQ 3 Mbps)' 
+                        : 'Guru yang terautentikasi melalui portal login Hotspot (Port terkunci • Limit 5 Mbps/Guru)';
+                }
+
+                const thUser = document.getElementById('thColUser');
+                const thUptime = document.getElementById('thColUptime');
+                const thExtra = document.getElementById('thColExtra');
+
+                if (thUser) thUser.innerText = isDhcpMode ? 'Nama Perangkat (Hostname)' : 'Username Guru';
+                if (thUptime) thUptime.innerText = isDhcpMode ? 'Waktu Terhubung' : 'Durasi Login';
+                if (thExtra) thExtra.innerText = isDhcpMode ? 'Interface & Status' : 'Data Masuk/Keluar';
 
                 if (!data.success || !data.users || data.users.length === 0) {
                     countBadge.innerText = '0';
-                    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 18px;">${currentMode === 'UJIAN' ? 'Mode Ujian Aktif: Tidak ada guru yang login captive portal.' : 'Belum ada guru yang terhubung ke hotspot saat ini.'}</td></tr>`;
+                    const emptyMsg = isDhcpMode 
+                        ? 'Belum ada perangkat siswa / laptop ujian yang terhubung ke port ether3-LAN saat ini.' 
+                        : 'Belum ada guru yang terhubung ke hotspot saat ini.';
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 22px;">${emptyMsg}</td></tr>`;
                     return;
                 }
 
@@ -980,36 +1054,62 @@ footer { text-align: center; padding: 16px; font-size: 11.5px; color: var(--text
                 tbody.innerHTML = '';
                 data.users.forEach(u => {
                     const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td style="font-weight: 600;">${u.user}</td>
-                        <td>${u.address}</td>
-                        <td style="font-family: monospace; font-size: 11.5px;">${u.mac}</td>
-                        <td>${u.uptime}</td>
-                        <td>${u.bytes_in} / ${u.bytes_out}</td>
-                        <td><button class="btn-kick" onclick="kickUser('${u.id}', '${u.user}')">Kick</button></td>
-                    `;
+                    if (u.type === 'dhcp') {
+                        row.innerHTML = `
+                            <td>
+                                <div style="font-weight: 700; color: #0f172a;">${u.hostname !== '-' ? u.hostname : u.name}</div>
+                                <div style="font-size: 11px; color: var(--text-muted);">${u.hostname !== '-' ? u.name : 'Perangkat Siswa Ujian'}</div>
+                            </td>
+                            <td><span style="font-family: monospace; font-size: 12px; background: #e0f2fe; color: #0369a1; padding: 2px 7px; border-radius: 6px; font-weight: 600;">${u.address}</span></td>
+                            <td style="font-family: monospace; font-size: 11.5px; color: #475569;">${u.mac}</td>
+                            <td>
+                                <div style="font-size: 12.5px; font-weight: 600;">${u.uptime}</div>
+                                <div style="font-size: 10.5px; color: var(--text-muted);">Aktif: ${u.last_seen} lalu</div>
+                            </td>
+                            <td>
+                                <span class="isp-badge online" style="font-size: 10.5px; padding: 2px 7px;">${u.server}</span>
+                                <span style="font-size: 10.5px; color: #059669; font-weight: 600; margin-left: 4px;">• ${u.status}</span>
+                            </td>
+                            <td>
+                                <button class="btn-kick" style="border-color: #fca5a5; color: #b91c1c; background: #fee2e2;" onclick="kickUser('${u.id}', '${u.name}', 'dhcp')" title="Reset sesi DHCP perangkat ini">
+                                    Reset Lease
+                                </button>
+                            </td>
+                        `;
+                    } else {
+                        row.innerHTML = `
+                            <td style="font-weight: 600;">${u.user}</td>
+                            <td><span style="font-family: monospace; font-size: 12px;">${u.address}</span></td>
+                            <td style="font-family: monospace; font-size: 11.5px; color: #475569;">${u.mac}</td>
+                            <td>${u.uptime}</td>
+                            <td>${u.bytes_in} / ${u.bytes_out}</td>
+                            <td><button class="btn-kick" onclick="kickUser('${u.id}', '${u.user}', 'hotspot')">Kick</button></td>
+                        `;
+                    }
                     tbody.appendChild(row);
                 });
             } catch (err) {}
         }
 
-        async function kickUser(userId, username) {
-            if (!confirm(`Keluarkan ${username} dari hotspot?`)) return;
+        async function kickUser(userId, username, userType = 'hotspot') {
+            const actionLabel = userType === 'dhcp' ? `Reset lease DHCP untuk perangkat ${username}?` : `Keluarkan ${username} dari hotspot?`;
+            if (!confirm(actionLabel)) return;
             try {
                 const res = await fetch('/api/users/kick', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: userId })
+                    body: JSON.stringify({ id: userId, type: userType })
                 });
                 const data = await res.json();
                 if (data.success) {
-                    showToast(`User ${username} berhasil di-kick`);
+                    showToast(data.message || `Aksi berhasil dijalankan`);
                     fetchActiveUsers();
                 } else {
                     alert(data.error);
                 }
-            } catch (err) { alert('Gagal kick user'); }
+            } catch (err) { alert('Gagal menjalankan aksi'); }
         }
+
 
         // ----------------------------------------------------
         // LIVE TRAFFIC MONITOR & CANVAS WAVE CHART
