@@ -1,7 +1,8 @@
 import json
 import os
+import datetime
 import urllib.parse
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect
 import routeros_api
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -10,6 +11,14 @@ app = Flask(
     __name__,
     template_folder=os.path.join(base_dir, 'templates'),
     static_folder=os.path.join(base_dir, 'static'),
+)
+
+# Secret key & Session security (HttpOnly, SameSite)
+app.secret_key = os.environ.get('SECRET_KEY', 'mis-integral-admin-secret-2026-auth-key-!#')
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    PERMANENT_SESSION_LIFETIME=datetime.timedelta(hours=12),
 )
 
 # Vercel Serverless WSGI Path Middleware
@@ -65,7 +74,9 @@ _in_memory_config = {
     "host": os.environ.get("MIKROTIK_HOST", "idn32.tunnel.id"),
     "port": int(os.environ.get("MIKROTIK_PORT", 3017)),
     "user": os.environ.get("MIKROTIK_USER", "admin"),
-    "password": os.environ.get("MIKROTIK_PASSWORD", "0020913463")
+    "password": os.environ.get("MIKROTIK_PASSWORD", "0020913463"),
+    "admin_user": os.environ.get("ADMIN_USER", "admin"),
+    "admin_password": os.environ.get("ADMIN_PASSWORD", "admin123")
 }
 
 def load_config():
@@ -89,6 +100,23 @@ def load_config():
         except Exception:
             pass
             
+    # Server Environment Variables take precedence over local files
+    if os.environ.get("MIKROTIK_HOST"):
+        default["host"] = os.environ.get("MIKROTIK_HOST")
+    if os.environ.get("MIKROTIK_PORT"):
+        try:
+            default["port"] = int(os.environ.get("MIKROTIK_PORT"))
+        except ValueError:
+            pass
+    if os.environ.get("MIKROTIK_USER"):
+        default["user"] = os.environ.get("MIKROTIK_USER")
+    if os.environ.get("MIKROTIK_PASSWORD"):
+        default["password"] = os.environ.get("MIKROTIK_PASSWORD")
+    if os.environ.get("ADMIN_USER"):
+        default["admin_user"] = os.environ.get("ADMIN_USER")
+    if os.environ.get("ADMIN_PASSWORD"):
+        default["admin_password"] = os.environ.get("ADMIN_PASSWORD")
+            
     _in_memory_config.update(default)
     return default
 
@@ -110,6 +138,7 @@ def get_mikrotik_api():
       port=int(cfg.get('port', 3017)),
       plaintext_login=True,
       use_ssl=False,
+      timeout=6,
   )
   return pool, pool.get_api()
 
@@ -126,14 +155,72 @@ def format_bps(bps):
     return '0 bps'
 
 
+# ----------------------------------------------------
+# AUTHENTICATION & ACCESS CONTROL MIDDLEWARE
+# ----------------------------------------------------
+@app.before_request
+def require_authentication():
+  # Public routes that do not require login
+  allowed_routes = ['/login', '/api/login']
+  if request.path.startswith('/static/') or request.path in allowed_routes:
+    return None
+
+  if not session.get('logged_in'):
+    if request.path.startswith('/api/'):
+      return jsonify({
+          'success': False,
+          'error': 'Akses ditolak. Sesi login telah berakhir atau belum login.',
+          'unauthorized': True
+      }), 401
+    return redirect('/login')
+
+
+@app.route('/login', methods=['GET'])
+def login_page():
+  if session.get('logged_in'):
+    return redirect('/')
+  return render_template('login.html')
+
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+  data = request.json or {}
+  username = data.get('username', '').strip()
+  password = data.get('password', '')
+
+  cfg = load_config()
+  valid_user = cfg.get('admin_user', 'admin')
+  valid_pass = cfg.get('admin_password', 'admin123')
+
+  if username == valid_user and password == valid_pass:
+    session.permanent = True
+    session['logged_in'] = True
+    session['admin_user'] = username
+    return jsonify({'success': True, 'message': 'Login berhasil!'})
+  
+  return jsonify({'success': False, 'error': 'Username atau password admin salah!'}), 401
+
+
+@app.route('/logout', methods=['GET'])
+@app.route('/api/logout', methods=['POST', 'GET'])
+def logout():
+  session.clear()
+  if request.path.startswith('/api/'):
+    return jsonify({'success': True, 'message': 'Logout berhasil!'})
+  return redirect('/login')
+
+
 @app.route('/')
 def index():
   cfg = load_config()
+  has_env = bool(os.environ.get('MIKROTIK_HOST') or os.environ.get('MIKROTIK_PASSWORD'))
   safe_cfg = {
       'host': cfg.get('host', 'idn32.tunnel.id'),
       'port': cfg.get('port', 3017),
       'user': cfg.get('user', 'admin'),
       'has_password': bool(cfg.get('password')),
+      'has_env': has_env,
+      'admin_user': session.get('admin_user', 'admin'),
   }
   return render_template('index.html', config=safe_cfg)
 
@@ -642,19 +729,25 @@ def save_settings():
   data = request.json or {}
   cfg = load_config()
 
-  if 'host' in data:
+  if 'host' in data and data['host'].strip():
     cfg['host'] = data['host'].strip()
-  if 'port' in data:
-    cfg['port'] = int(data['port'])
-  if 'user' in data:
+  if 'port' in data and str(data['port']).strip():
+    try:
+      cfg['port'] = int(data['port'])
+    except ValueError:
+      pass
+  if 'user' in data and data['user'].strip():
     cfg['user'] = data['user'].strip()
   if 'password' in data and data['password'] != '':
     cfg['password'] = data['password']
+  if 'admin_password' in data and data['admin_password'].strip() != '':
+    cfg['admin_password'] = data['admin_password'].strip()
 
   save_config(cfg)
   return jsonify(
-      {'success': True, 'message': 'Pengaturan koneksi berhasil disimpan!'}
+      {'success': True, 'message': 'Pengaturan berhasil disimpan!'}
   )
+
 
 
 if __name__ == '__main__':
