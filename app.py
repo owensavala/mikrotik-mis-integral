@@ -138,7 +138,6 @@ def get_mikrotik_api():
       port=int(cfg.get('port', 3017)),
       plaintext_login=True,
       use_ssl=False,
-      timeout=6,
   )
   return pool, pool.get_api()
 
