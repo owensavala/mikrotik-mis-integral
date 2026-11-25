@@ -361,19 +361,56 @@ def switch_mode():
         q_name = q.get('name', '').lower()
         if 'terkunci' in q_name or 'limitet' in q_name:
           queue_res.set(id=q['id'], disabled='false')
+      # Clear active hotspot sessions & cookies if any
+      for path in ['/ip/hotspot/active', '/ip/hotspot/cookie']:
+        try:
+          res = api.get_resource(path)
+          for item in res.get():
+            try:
+              res.remove(id=item['id'])
+            except Exception:
+              pass
+        except Exception:
+          pass
       msg = (
           'Berhasil beralih ke MODE UJIAN! Hotspot dinonaktifkan dan pembagian'
           ' bandwidth PCQ aktif.'
       )
     else:
+      # 1. Enable Hotspot server(s)
       for hs in hotspots:
         hs_res.set(id=hs['id'], disabled='false')
+      # 2. Disable exam PCQ queue so teachers get Hotspot Profile speed
       for q in queues:
         q_name = q.get('name', '').lower()
-        if 'terkunci' in q_name:
+        if 'terkunci' in q_name or 'limitet' in q_name:
           queue_res.set(id=q['id'], disabled='true')
+      # 3. Force logout all existing hotspot sessions, cookies, hosts & flush
+      #    active firewall connections directly on MikroTik (instant, zero timeout)
+      flush_script = (
+          '/ip hotspot active remove [find]; '
+          '/ip hotspot cookie remove [find]; '
+          '/ip hotspot host remove [find bypassed=no]; '
+          '/ip firewall connection remove [find src-address~"^192\\\\.168\\\\.100\\\\."]; '
+          '/ip firewall connection remove [find src-address~"^192\\\\.168\\\\.200\\\\."]'
+      )
+      try:
+        api.get_resource('/').call('execute', {'script': flush_script})
+      except Exception:
+        # Fallback: remove active hotspot sessions via resource API
+        for path in ['/ip/hotspot/active', '/ip/hotspot/cookie']:
+          try:
+            res = api.get_resource(path)
+            for item in res.get():
+              try:
+                res.remove(id=item['id'])
+              except Exception:
+                pass
+          except Exception:
+            pass
       msg = (
-          'Berhasil beralih ke MODE HARIAN! Hotspot aktif (Akses khusus guru).'
+          'Berhasil beralih ke MODE HARIAN! Hotspot aktif & semua sesi koneksi'
+          ' lama telah diputus (wajib login ulang).'
       )
 
     return jsonify({'success': True, 'mode': target_mode, 'message': msg})
@@ -392,25 +429,36 @@ def get_traffic():
   pool = None
   try:
     pool, api = get_mikrotik_api()
-    ifaces = ['ether1-indibiz', 'ether2-Orbit', 'ether3-LAN', 'terkunci']
+    # Detect actual WAN 1 interface name (ether1-Telkom or ether1-indibiz)
+    all_ifaces = [i.get('name', '') for i in api.get_resource('/interface').get()]
+    wan1_name = next((n for n in all_ifaces if n.lower().startswith('ether1')), 'ether1-Telkom')
+    wan2_name = next((n for n in all_ifaces if n.lower().startswith('ether2')), 'ether2-Orbit')
+    lan_name = next((n for n in all_ifaces if n.lower().startswith('ether3')), 'ether3-LAN')
+
+    iface_map = {
+        'ether1-indibiz': wan1_name,
+        'ether2-Orbit': wan2_name,
+        'ether3-LAN': lan_name,
+        'terkunci': 'terkunci',
+    }
     traffic_data = {}
 
-    for iface in ifaces:
+    for key_name, real_iface in iface_map.items():
       try:
         mon = api.get_resource('/interface').call(
-            'monitor-traffic', {'interface': iface, 'once': ''}
+            'monitor-traffic', {'interface': real_iface, 'once': ''}
         )
         if mon:
           rx = mon[0].get('rx-bits-per-second', 0)
           tx = mon[0].get('tx-bits-per-second', 0)
-          traffic_data[iface] = {
+          traffic_data[key_name] = {
               'rx_formatted': format_bps(rx),
               'tx_formatted': format_bps(tx),
               'rx_raw': int(rx),
               'tx_raw': int(tx),
           }
       except Exception:
-        traffic_data[iface] = {
+        traffic_data[key_name] = {
             'rx_formatted': '0 bps',
             'tx_formatted': '0 bps',
             'rx_raw': 0,
@@ -820,10 +868,31 @@ def reboot_router():
   pool = None
   try:
     pool, api = get_mikrotik_api()
-    api.get_resource('/system').call('reboot')
-    return jsonify(
-        {'success': True, 'message': 'Perintah reboot terkirim ke MikroTik!'}
+    # Use a 2-second self-cleaning scheduler so API responds cleanly before router drops socket
+    sched_res = api.get_resource('/system/scheduler')
+    for s in sched_res.get():
+      if s.get('name') == 'web-reboot':
+        try:
+          sched_res.remove(id=s['id'])
+        except Exception:
+          pass
+    sched_res.add(
+        name='web-reboot',
+        interval='00:00:02',
+        **{
+            'on-event': (
+                '/system scheduler remove [find name=web-reboot]; /system'
+                ' reboot'
+            )
+        },
     )
+    return jsonify({
+        'success': True,
+        'message': (
+            'Perintah reboot berhasil dijadwalkan! Router MikroTik akan'
+            ' restart dalam 2 detik.'
+        ),
+    })
   except Exception as e:
     return jsonify({'success': False, 'error': str(e)}), 500
   finally:
